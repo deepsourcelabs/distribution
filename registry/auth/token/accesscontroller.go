@@ -15,11 +15,21 @@ import (
 	dcontext "github.com/distribution/distribution/v3/context"
 	"github.com/distribution/distribution/v3/registry/auth"
 	"github.com/docker/libtrust"
+	log "github.com/sirupsen/logrus"
 )
 
 // accessSet maps a typed, named resource to
 // a set of actions requested or authorized.
 type accessSet map[auth.Resource]actionSet
+
+// The access token resource for which we allow pull-all access
+var PullAllAccessToken = auth.Access{
+	Resource: auth.Resource{
+		Type: "repository",
+		Name: "*",
+	},
+	Action: "pull",
+}
 
 // newAccessSet constructs an accessSet from
 // a variable number of auth.Access items.
@@ -275,11 +285,18 @@ func (ac *accessController) Authorized(ctx context.Context, accessItems ...auth.
 	}
 
 	accessSet := token.accessSet()
-	for _, access := range accessItems {
-		if !accessSet.contains(access) {
-			challenge.err = ErrInsufficientScope
-			return nil, challenge
+	// Allow access to everything if token.accessSet() has any key `auth.Resource{Name: "*", Type: "repository"}`,
+	// allow all access for those actions.
+	if !accessSet.contains(PullAllAccessToken) {
+		for _, access := range accessItems {
+			// the access set should contain the accessed resource, or the acce
+			if !accessSet.contains(access) {
+				challenge.err = ErrInsufficientScope
+				return nil, challenge
+			}
 		}
+	} else {
+		log.Infof("Images with admin access requested. Subject: %s", token.Claims.Subject)
 	}
 
 	ctx = auth.WithResources(ctx, token.resources())

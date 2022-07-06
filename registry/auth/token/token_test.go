@@ -476,6 +476,33 @@ func TestAccessController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("accessController returned unexpected error: %s", err)
 	}
+
+	pullAllAccess := auth.Access{
+		Resource: auth.Resource{
+			Type: "repository",
+			Name: "*",
+		},
+		Action: "pull",
+	}
+
+	token, err = makeTestToken(
+		issuer, service, []*ResourceActions{{
+			Type:    pullAllAccess.Resource.Type,
+			Name:    pullAllAccess.Resource.Name,
+			Actions: []string{"pull"},
+		}},
+		rootKeys[0], 1, time.Now(), time.Now().Add(5*time.Minute),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.compactRaw()))
+
+	_, err = accessController.Authorized(ctx, testAccess)
+	if err != nil {
+		t.Fatalf("accessController returned unexpected error: %s", err)
+	}
 }
 
 // This tests that newAccessController can handle PEM blocks in the certificate
