@@ -1,6 +1,6 @@
 timeout: 10m
 steps:
-  - name: 'gcr.io/kaniko-project/executor:v1.5.0'
+  - name: 'gcr.io/kaniko-project/executor:v1.8.1'
     args:
     - --destination=us.gcr.io/deepsource-dev/registry:dev
     - --dockerfile=Dockerfile
